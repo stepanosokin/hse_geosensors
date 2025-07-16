@@ -1,10 +1,12 @@
 import folium
 from flask import Flask, render_template_string
 
+# https://flask.palletsprojects.com/en/stable/quickstart
 app = Flask(__name__)
 
 @app.route("/")
 def hello_world():
+    # https://python-visualization.github.io/folium/latest/getting_started.html
     m = folium.Map(location=(57.0, 39.0), tiles="cartodb darkmatter")
 
     geojson_url = "http://192.168.117.3:5000/collections/blocks_rosnedra_lists/items?f=json&limit=1000"
