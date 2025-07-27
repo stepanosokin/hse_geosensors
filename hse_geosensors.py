@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.config["CACHE_TYPE"] = "null"
 
+
 @app.route("/")
 def generate_root_page():
     # https://python-visualization.github.io/folium/latest/getting_started.html
@@ -19,53 +20,55 @@ def generate_root_page():
 
     # geojson_url = "http://192.168.117.3:5000/collections/blocks_rosnedra_lists/items?f=json&limit=1000"
     # folium.GeoJson(geojson_url).add_to(m)
-    
+
     url = f"http://94.154.11.74/frost/v1.1/Locations?" \
-    f"$expand=Things($expand=MultiDatastreams(" \
-        f"$expand=Observations(" \
-            f"$top=100;" \
-            f"$count=true;" \
-            f"$orderby=phenomenonTime desc;" \
-            f"$filter=phenomenonTime ge {(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')}T00:00:00%2B03:00)))" \
-    f"&$resultFormat=GeoJSON"    
+    f"$expand=Things(" \
+        f"$expand=MultiDatastreams(" \
+            f"$expand=Observations(" \
+                f"$top=100;" \
+                f"$count=true;" \
+                f"$orderby=phenomenonTime desc;" \
+                f"$filter=phenomenonTime ge {(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')}T00:00:00%2B03:00" \
+            f")" \
+        f")" \
+    f")" \
+    f"&$resultFormat=GeoJSON"
+
     geojson_data = requests.get(url).json()
+
     reproj_geojson_data = {
-        "type": geojson_data["type"], 
+        "type": geojson_data["type"],
         "@iot.nextLink": geojson_data["@iot.nextLink"],
-        "features": []
-        }
-    
+        "features": [],
+    }
+
     source_crs = pyproj.CRS("EPSG:3857")
     target_crs = pyproj.CRS("EPSG:4326")
-    project = partial(
-        pyproj.transform,
-        source_crs,
-        target_crs,
-        always_xy=True
-    )
-    for ft in geojson_data['features']:        
-        orig_geom = shape(ft['geometry'])
+
+    project = partial(pyproj.transform, source_crs, target_crs, always_xy=True)
+
+    for ft in geojson_data["features"]:
+        orig_geom = shape(ft["geometry"])
         reproj_geom = transform(project, orig_geom)
         reproj_geojson_geom = mapping(reproj_geom)
-        ft['geometry'] = reproj_geojson_geom
+        ft["geometry"] = reproj_geojson_geom
         reproj_geojson_data["features"].append(ft)
-    
+
     folium.GeoJson(reproj_geojson_data).add_to(m)
-    
-    m.save('output/index.htm')
-    
+
+    m.save("output/index.htm")
+
     return render_template_string(m._repr_html_())
 
-    
 
-# для запуска тестового сервера выполнить команду 
+# для запуска тестового сервера выполнить команду
 # ./.venv/Scripts/python.exe -m flask --app hse_geosensors run
 
 
 # инструкции
 # https://www.bing.com/search?pglt=299&q=how+to+create+web+map+with+changing+data+using+python&cvid=401ee5b3872143eda01bf1448ec19412&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOdIBCTMyNjA5ajBqMagCCLACAQ&FORM=ANNTA1&PC=U531
 # https://flask.palletsprojects.com/en/stable/quickstart/#a-minimal-application
-# дальнейшие инструкции 
+# дальнейшие инструкции
 # https://flask.palletsprojects.com/en/stable/quickstart
 
 
@@ -82,6 +85,8 @@ def generate_root_page():
 
 # диаграммы в попапах Folium
 # https://python-visualization.github.io/folium/latest/user_guide/ui_elements/popups.html
+# Vega-altair
+# https://altair-viz.github.io/gallery/multiline_tooltip.html
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     generate_root_page()
