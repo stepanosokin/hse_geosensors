@@ -5,13 +5,14 @@ from shapely.geometry import shape, mapping
 from shapely.ops import transform
 import pyproj
 import requests
+from datetime import datetime, timedelta
 
 # https://flask.palletsprojects.com/en/stable/quickstart
 app = Flask(__name__)
 app.config["CACHE_TYPE"] = "null"
 
 @app.route("/")
-def hello_world():
+def generate_root_page():
     # https://python-visualization.github.io/folium/latest/getting_started.html
     # m = folium.Map(location=(57.0, 39.0), tiles="cartodb darkmatter")
     m = folium.Map(location=(55.0, 37.0))
@@ -19,14 +20,14 @@ def hello_world():
     # geojson_url = "http://192.168.117.3:5000/collections/blocks_rosnedra_lists/items?f=json&limit=1000"
     # folium.GeoJson(geojson_url).add_to(m)
     
-    url = "http://94.154.11.74/frost/v1.1/Locations?    \
-    $expand=Things($expand=MultiDatastreams(    \
-        $expand=Observations(\
-            $top=100;\
-            $count=true;\
-            $orderby=phenomenonTime desc;\
-            $filter=phenomenonTime ge 2025-07-23T00:00:00%2B03:00)))\
-    &$resultFormat=GeoJSON"    
+    url = f"http://94.154.11.74/frost/v1.1/Locations?" \
+    f"$expand=Things($expand=MultiDatastreams(" \
+        f"$expand=Observations(" \
+            f"$top=100;" \
+            f"$count=true;" \
+            f"$orderby=phenomenonTime desc;" \
+            f"$filter=phenomenonTime ge {(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')}T00:00:00%2B03:00)))" \
+    f"&$resultFormat=GeoJSON"    
     geojson_data = requests.get(url).json()
     reproj_geojson_data = {
         "type": geojson_data["type"], 
@@ -51,10 +52,11 @@ def hello_world():
     
     folium.GeoJson(reproj_geojson_data).add_to(m)
     
+    m.save('output/index.htm')
     
     return render_template_string(m._repr_html_())
 
-# m.save('output/index.htm')
+    
 
 # для запуска тестового сервера выполнить команду 
 # ./.venv/Scripts/python.exe -m flask --app hse_geosensors run
@@ -76,4 +78,10 @@ def hello_world():
 # https://fraunhoferiosb.github.io/FROST-Server/sensorthingsapi/requestingData/STA-ResultFormats.html
 
 
-# Проблема: какого хуя fkask приложение не обновляется после ищменения кода?!
+# Проблема: почему flask приложение не обновляется после изменения кода?!
+
+# диаграммы в попапах Folium
+# https://python-visualization.github.io/folium/latest/user_guide/ui_elements/popups.html
+
+if __name__ == '__main__':
+    generate_root_page()
