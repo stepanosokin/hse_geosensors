@@ -7,4 +7,6 @@ requires-python = ">=3.10"
 dependencies = [
     "flask>=3.1.1",
     "folium>=0.20.0",
+    "pyproj>=3.7.1",
+    "shapely>=2.1.1",
 ]
