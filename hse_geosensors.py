@@ -19,13 +19,14 @@ def generate_root_page():
     # m = folium.Map(location=(57.0, 39.0), tiles="cartodb darkmatter")
     m = folium.Map(location=(55.650443, 37.501211), zoom_start=14)
 
+    # https://fraunhoferiosb.github.io/FROST-Server/
     url = f"http://94.154.11.74/frost/v1.1/Locations?" \
     f"$expand=Things(" \
         f"$expand=MultiDatastreams(" \
             f"$expand=Observations(" \
                 f"$top=100;" \
                 f"$count=true;" \
-                f"$orderby=phenomenonTime asc;" \
+                f"$orderby=phenomenonTime desc;" \
                 f"$filter=phenomenonTime ge {(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')}T00:00:00%2B03:00" \
             f")" \
         f")" \
