@@ -6,6 +6,7 @@ from shapely.ops import transform
 import pyproj
 import requests
 from datetime import datetime, timedelta
+import json
 
 # https://flask.palletsprojects.com/en/stable/quickstart
 app = Flask(__name__)
@@ -16,10 +17,7 @@ app.config["CACHE_TYPE"] = "null"
 def generate_root_page():
     # https://python-visualization.github.io/folium/latest/getting_started.html
     # m = folium.Map(location=(57.0, 39.0), tiles="cartodb darkmatter")
-    m = folium.Map(location=(55.0, 37.0))
-
-    # geojson_url = "http://192.168.117.3:5000/collections/blocks_rosnedra_lists/items?f=json&limit=1000"
-    # folium.GeoJson(geojson_url).add_to(m)
+    m = folium.Map(location=(55.650443, 37.501211), zoom_start=14)
 
     url = f"http://94.154.11.74/frost/v1.1/Locations?" \
     f"$expand=Things(" \
@@ -27,34 +25,108 @@ def generate_root_page():
             f"$expand=Observations(" \
                 f"$top=100;" \
                 f"$count=true;" \
-                f"$orderby=phenomenonTime desc;" \
+                f"$orderby=phenomenonTime asc;" \
                 f"$filter=phenomenonTime ge {(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')}T00:00:00%2B03:00" \
             f")" \
         f")" \
     f")" \
-    f"&$resultFormat=GeoJSON"
-
-    geojson_data = requests.get(url).json()
-
-    reproj_geojson_data = {
-        "type": geojson_data["type"],
-        "@iot.nextLink": geojson_data["@iot.nextLink"],
-        "features": [],
-    }
+    # f"&$resultFormat=GeoJSON" # for the GeoJSON option
 
     source_crs = pyproj.CRS("EPSG:3857")
     target_crs = pyproj.CRS("EPSG:4326")
 
     project = partial(pyproj.transform, source_crs, target_crs, always_xy=True)
+    
+    ###################
+    # # GeoJSON option
+    ###################
+    # geojson_data = requests.get(url).json()
+    # pass
+    # reproj_geojson_data = {
+    #     "type": geojson_data["type"],
+    #     "@iot.nextLink": geojson_data["@iot.nextLink"],
+    #     "features": [],
+    # }
 
-    for ft in geojson_data["features"]:
-        orig_geom = shape(ft["geometry"])
-        reproj_geom = transform(project, orig_geom)
-        reproj_geojson_geom = mapping(reproj_geom)
-        ft["geometry"] = reproj_geojson_geom
-        reproj_geojson_data["features"].append(ft)
+    # for ft in geojson_data["features"]:
+    #     orig_geom = shape(ft["geometry"])
+    #     reproj_geom = transform(project, orig_geom)
+    #     reproj_geojson_geom = mapping(reproj_geom)
+    #     ft["geometry"] = reproj_geojson_geom
+    #     reproj_geojson_data["features"].append(ft)
 
-    folium.GeoJson(reproj_geojson_data).add_to(m)
+    # for gj_feature in reproj_geojson_data["features"]:
+    #     gj = folium.GeoJson(gj_feature)
+    #     gj.add_child(folium.Popup("outline Popup on GeoJSON"))
+    #     gj.add_to(m)
+    
+    
+    ###############
+    # JSON option
+    ###############
+    
+    json_data = requests.get(url).json()
+    pass
+
+    obs_props = [
+        {"name": "timestamp", "desc": "timestamp"},
+        {"name": "Dn", "desc": "minimum value for wind direction"},
+        {"name": "Dm", "desc": "average value for wind direction"},
+        {"name": "Dx", "desc": "maximum value for wind direction"},
+        {"name": "Sn", "desc": "minimum value for wind speed"},
+        {"name": "Sm", "desc": "average wind speed"},
+        {"name": "Sx", "desc": "maximum value for wind speed"},
+        {"name": "Ta", "desc": "air temperature (0C)"},
+        {"name": "Ua", "desc": "air humidity (%)"},
+        {"name": "Pa", "desc": "atmospheric pressure (hPa)"},
+        {"name": "Rc", "desc": "precipitation (mm)"}
+    ]
+    
+    for location in json_data.get("value"):
+        reproj_geom = transform(project, shape(location.get("location")))
+        reproj_gj_geom = json.loads(json.dumps(mapping(reproj_geom)))   # this is to convert coord pairs from tuples to lists
+        gj = folium.GeoJson({"type": "Feature", "geometry": reproj_gj_geom, "properties": {}})
+        
+        for thing in location["Things"]:
+            for mdstream in thing.get("MultiDatastreams"):
+                values = [
+                    {
+                        k: v
+                        for k, v in zip(
+                            [x["name"] for x in obs_props],
+                            [obs["phenomenonTime"]] + obs["result"],
+                        )
+                    }
+                    for obs in mdstream["Observations"]
+                ]
+                # values = []
+                # for obs in mdstream['Observations']:
+
+                # https://vega.github.io/vega-lite/tutorials/getting_started.html
+                # https://vega.github.io/vega-lite/tutorials/explore.html
+                vega_lite_diagram = {
+                    "data": {"values": values},
+                    "mark": "point",
+                    "encoding": {
+                        # https://vega.github.io/vega-lite/docs/format.html#temporal-data
+                        "x": {"field": "timestamp", "type": "temporal"},
+                        "y": {"field": "Dn"},
+                    },
+                }
+                pass
+                vega_lite = folium.VegaLite(
+                    vega_lite_diagram, width="100%", height="100%"
+                )
+                popup = folium.Popup()
+                vega_lite.add_to(popup)
+                popup.add_to(gj)
+
+        # gj.add_child(folium.Popup("outline Popup on GeoJSON"))
+        gj.add_to(m)
+        
+        
+    
+    # folium.GeoJson(reproj_geojson_data).add_to(m)
 
     m.save("output/index.htm")
 
@@ -85,6 +157,9 @@ def generate_root_page():
 
 # диаграммы в попапах Folium
 # https://python-visualization.github.io/folium/latest/user_guide/ui_elements/popups.html
+# https://python-visualization.github.io/folium/latest/reference.html#folium.features.VegaLite
+# https://vega.github.io/vega-lite/tutorials/explore.html
+
 # Vega-altair
 # https://altair-viz.github.io/gallery/multiline_tooltip.html
 
