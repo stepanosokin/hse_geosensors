@@ -59,7 +59,9 @@ def generate_root_page():
     #     gj = folium.GeoJson(gj_feature)
     #     gj.add_child(folium.Popup("outline Popup on GeoJSON"))
     #     gj.add_to(m)
-    
+    ############################
+    ###end of geojson option####
+    ############################ 
     
     ###############
     # JSON option
@@ -68,6 +70,7 @@ def generate_root_page():
     json_data = requests.get(url).json()
     pass
 
+    # http://94.154.11.74/frost/v1.1/MultiDatastreams('RudnMeteoRawDataMultiStream')/description
     obs_props = [
         {"name": "timestamp", "desc": "timestamp"},
         {"name": "Dn", "desc": "minimum value for wind direction"},
@@ -124,7 +127,9 @@ def generate_root_page():
         # gj.add_child(folium.Popup("outline Popup on GeoJSON"))
         gj.add_to(m)
         
-        
+    ############################
+    ###end of json option####
+    ############################    
     
     # folium.GeoJson(reproj_geojson_data).add_to(m)
 
