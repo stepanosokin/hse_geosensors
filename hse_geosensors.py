@@ -94,18 +94,22 @@ def generate_root_page():
         for thing in location["Things"]:
             for mdstream in thing.get("MultiDatastreams"):
                 pass
-                values = [
-                    {
-                        k: v
-                        for k, v in zip(
-                            [x["name"] for x in [{"name": "timestamp", "desc": "timestamp"}] + obs_props],
-                            [obs["phenomenonTime"]] + obs["result"],
-                        )
-                    }
-                    for obs in mdstream["Observations"]
-                ]
-                values = values[::-1]
-                pass
+                
+                #############################################
+                ##это первый вариант структуры данных, отказался от него т.к. сложнее разбивать показатели на отдельные графики
+                #############################################
+                # values = [
+                #     {
+                #         k: v
+                #         for k, v in zip(
+                #             [x["name"] for x in [{"name": "timestamp", "desc": "timestamp"}] + obs_props],
+                #             [obs["phenomenonTime"]] + obs["result"],
+                #         )
+                #     }
+                #     for obs in mdstream["Observations"]
+                # ]
+                # values = values[::-1]
+                # ############################################
                 
                 values = []
                 for obs in mdstream["Observations"]:
@@ -119,7 +123,7 @@ def generate_root_page():
                             }
                         )
                 pass
-                    
+                
             
             
                 # values = []
@@ -148,7 +152,8 @@ def generate_root_page():
                         "color": {"field": "prop", "type": "nominal"}
                     },
                     "transform": [  # https://vega.github.io/vega-lite/docs/transform.html
-                        {"filter": {"field": "value", "gt": 0}}
+                        {"filter": {"field": "value", "gt": 0}},
+                        {"filter": {"field": "prop", "oneOf": ['Dn', 'Dm', 'Dx', 'Sn', 'Sm', 'Sx', 'Ta', 'Ua', 'Rc']}}
                     ]
                 }
                 pass
