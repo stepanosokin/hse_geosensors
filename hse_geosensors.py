@@ -73,7 +73,7 @@ def generate_root_page():
 
     # http://94.154.11.74/frost/v1.1/MultiDatastreams('RudnMeteoRawDataMultiStream')/description
     obs_props = [
-        {"name": "timestamp", "desc": "timestamp"},
+        # {"name": "timestamp", "desc": "timestamp"},
         {"name": "Dn", "desc": "minimum value for wind direction"},
         {"name": "Dm", "desc": "average value for wind direction"},
         {"name": "Dx", "desc": "maximum value for wind direction"},
@@ -93,33 +93,68 @@ def generate_root_page():
         
         for thing in location["Things"]:
             for mdstream in thing.get("MultiDatastreams"):
+                pass
                 values = [
                     {
                         k: v
                         for k, v in zip(
-                            [x["name"] for x in obs_props],
+                            [x["name"] for x in [{"name": "timestamp", "desc": "timestamp"}] + obs_props],
                             [obs["phenomenonTime"]] + obs["result"],
                         )
                     }
                     for obs in mdstream["Observations"]
                 ]
+                values = values[::-1]
+                pass
+                
+                values = []
+                for obs in mdstream["Observations"]:
+                    for i, prop in enumerate(obs_props):
+                        values.append(
+                            {
+                                "timestamp": obs["phenomenonTime"],
+                                "prop": prop["name"],
+                                "prop_desc": prop["desc"],
+                                "value": obs['result'][i]
+                            }
+                        )
+                pass
+                    
+            
+            
                 # values = []
                 # for obs in mdstream['Observations']:
 
                 # https://vega.github.io/vega-lite/tutorials/getting_started.html
                 # https://vega.github.io/vega-lite/tutorials/explore.html
                 vega_lite_diagram = {
-                    "data": {"values": values},
-                    "mark": "point",
+                    "data": {
+                        "values": values
+                    },
+                    "mark": "line",
                     "encoding": {
                         # https://vega.github.io/vega-lite/docs/format.html#temporal-data
-                        "x": {"field": "timestamp", "type": "temporal"},
-                        "y": {"field": "Dn"},
+                        "x": {
+                            "bin": False,  # это если надо дискретизировать по интервалам
+                            # "timeUnit": "day", # это чтобы посчитать среднемноголетнее по месяцам https://vega.github.io/vega-lite/docs/timeunit.html
+                            "field": "timestamp", "type": "temporal",
+                            "title": "Время"
+                        },
+                        "y": {
+                            # "aggregate": "mean", # это нужно, если используем timeUnit или bin
+                            "field": "value", 
+                            "type": "quantitative"                            
+                        },
+                        "color": {"field": "prop", "type": "nominal"}
                     },
+                    "transform": [  # https://vega.github.io/vega-lite/docs/transform.html
+                        {"filter": {"field": "value", "gt": 0}}
+                    ]
                 }
                 pass
+                # https://python-visualization.github.io/folium/latest/reference.html#folium.features.VegaLite
                 vega_lite = folium.VegaLite(
-                    vega_lite_diagram, width="100%", height="100%"
+                    vega_lite_diagram, width="1000", height="100%"
                 )
                 popup = folium.Popup()
                 vega_lite.add_to(popup)
